@@ -1,0 +1,1065 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Notes</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f0efe9;color:#1a1a1a;height:100vh;display:flex;flex-direction:column;overflow:hidden;}
+.app{display:grid;grid-template-columns:240px 1fr;flex:1;overflow:hidden;}
+
+/* ── Sidebar ── */
+.sidebar{background:#e8e7e1;border-right:1px solid #d4d3cb;display:flex;flex-direction:column;overflow:hidden;}
+.sidebar-top{padding:12px 10px 8px;border-bottom:1px solid #d4d3cb;flex-shrink:0;}
+.sidebar-title{font-size:11px;font-weight:700;color:#888;letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px;padding:0 4px;}
+.search-input{width:100%;border:1px solid #d0cfc8;border-radius:7px;padding:6px 9px;font-size:13px;background:#f5f4ee;color:#1a1a1a;outline:none;font-family:inherit;}
+.search-input:focus{border-color:#999;background:#fff;}
+.sidebar-actions{display:flex;gap:6px;margin-top:8px;}
+.sa-btn{flex:1;border:1px solid #d4d3cb;border-radius:7px;padding:5px 6px;font-size:12px;cursor:pointer;background:#f0efe9;color:#555;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:4px;}
+.sa-btn:hover{background:#e0dfd9;color:#1a1a1a;}
+.tree-wrap{flex:1;overflow-y:auto;padding:6px 6px 40px;}
+.folder-row{display:flex;align-items:center;gap:4px;padding:5px 6px;border-radius:6px;cursor:pointer;user-select:none;}
+.folder-row:hover{background:#dddcd6;}
+.folder-row.drag-over{background:#d0e8ff;outline:2px dashed #60a5fa;}
+.folder-caret{font-size:11px;color:#888;width:12px;flex-shrink:0;transition:transform .15s;}
+.folder-caret.open{transform:rotate(90deg);}
+.folder-icon{font-size:15px;flex-shrink:0;}
+.folder-name{font-size:13px;font-weight:500;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.folder-name-input{font-size:13px;flex:1;border:1px solid #999;border-radius:4px;padding:1px 4px;font-family:inherit;outline:none;}
+.folder-count{font-size:11px;color:#aaa;flex-shrink:0;}
+.folder-menu-btn{background:none;border:none;cursor:pointer;color:#aaa;font-size:16px;padding:0 2px;line-height:1;display:none;}
+.folder-row:hover .folder-menu-btn{display:block;}
+.folder-menu-btn:hover{color:#555;}
+.folder-children{padding-left:16px;}
+.note-item{display:flex;align-items:center;gap:6px;padding:6px 8px;border-radius:6px;cursor:pointer;user-select:none;}
+.note-item:hover{background:#dddcd6;}
+.note-item.active{background:#fff;border:1px solid #d0cfc8;box-shadow:0 1px 3px rgba(0,0,0,.06);}
+.note-item.drag-over{background:#d0e8ff;outline:2px dashed #60a5fa;}
+.note-icon{font-size:13px;color:#aaa;flex-shrink:0;}
+.note-info{flex:1;min-width:0;}
+.note-item-title{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.note-item-preview{font-size:11px;color:#999;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.note-tip-badge{font-size:10px;background:#dbeafe;color:#1d4ed8;border-radius:4px;padding:1px 5px;flex-shrink:0;}
+.uncategorized-header{font-size:11px;color:#aaa;padding:8px 8px 4px;font-weight:600;letter-spacing:.04em;}
+.ctx-menu{position:fixed;background:#fff;border:1px solid #d4d3cb;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.12);z-index:2000;min-width:160px;padding:4px 0;display:none;}
+.ctx-item{padding:7px 14px;font-size:13px;cursor:pointer;color:#1a1a1a;}
+.ctx-item:hover{background:#f0efe9;}
+.ctx-item.danger{color:#c00;}
+.ctx-item.danger:hover{background:#fee;}
+.ctx-sep{height:1px;background:#e8e7e1;margin:3px 0;}
+
+/* ── Editor ── */
+.editor{display:flex;flex-direction:column;background:#fff;overflow:hidden;}
+.toolbar{padding:8px 14px;border-bottom:1px solid #e8e7e1;display:flex;align-items:center;gap:4px;flex-wrap:wrap;flex-shrink:0;background:#faf9f5;}
+.tb{border:1px solid #e0dfd9;border-radius:6px;padding:4px 9px;font-size:12px;cursor:pointer;color:#444;background:#fff;font-family:inherit;display:inline-flex;align-items:center;gap:4px;white-space:nowrap;}
+.tb:hover{background:#f0efe9;border-color:#bbb;color:#1a1a1a;}
+.tb.on{background:#1a1a1a;color:#fff;border-color:#1a1a1a;}
+.tb.accent{background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe;}
+.tb.accent:hover{background:#dbeafe;}
+.tb.green{background:#f0fdf4;color:#15803d;border-color:#bbf7d0;}
+.tb.green:hover{background:#dcfce7;}
+.tb.red{background:#fff1f2;color:#be123c;border-color:#fecdd3;}
+.tb.red:hover{background:#ffe4e6;}
+.tb-sep{width:1px;height:20px;background:#e0dfd9;margin:0 2px;flex-shrink:0;}
+
+/* Format toolbar */
+.fmt-bar{padding:6px 14px;border-bottom:1px solid #e8e7e1;display:flex;align-items:center;gap:4px;flex-shrink:0;background:#fff;flex-wrap:wrap;row-gap:4px;}
+.fmt-btn{border:1px solid #e0dfd9;border-radius:5px;padding:3px 8px;font-size:13px;cursor:pointer;color:#444;background:#fff;font-family:inherit;min-width:28px;display:inline-flex;align-items:center;justify-content:center;white-space:nowrap;}
+.fmt-btn:hover{background:#f0efe9;border-color:#bbb;}
+.fmt-btn.active{background:#1a1a1a;color:#fff;border-color:#1a1a1a;}
+.fmt-sep{width:1px;height:18px;background:#e0dfd9;margin:0 3px;flex-shrink:0;}
+select.fmt-select{border:1px solid #e0dfd9;border-radius:5px;padding:3px 6px;font-size:12px;color:#444;background:#fff;cursor:pointer;outline:none;font-family:inherit;}
+select.fmt-select:hover{border-color:#bbb;}
+.color-swatch{width:22px;height:22px;border-radius:5px;border:1px solid #e0dfd9;cursor:pointer;padding:0;flex-shrink:0;}
+.color-row{display:flex;gap:4px;align-items:center;}
+
+/* Content areas */
+.note-title-input{border:none;outline:none;font-size:21px;font-weight:600;color:#1a1a1a;padding:16px 20px 6px;background:transparent;width:100%;font-family:inherit;flex-shrink:0;}
+.note-title-input::placeholder{color:#ccc;}
+.note-meta{padding:0 20px 8px;font-size:11px;color:#bbb;display:flex;gap:12px;flex-shrink:0;}
+.content-wrap{flex:1;overflow:hidden;display:flex;flex-direction:column;min-height:0;}
+
+.edit-div{flex:1;overflow-y:auto;padding:8px 20px 20px;font-size:15px;line-height:1.8;color:#1a1a1a;outline:none;}
+.edit-div:empty:before{content:attr(data-placeholder);color:#ccc;pointer-events:none;}
+.edit-div h1,.preview-div h1{font-size:24px;font-weight:700;line-height:1.3;margin:12px 0 4px;}
+.edit-div h2,.preview-div h2{font-size:19px;font-weight:600;line-height:1.4;margin:10px 0 4px;}
+.edit-div h3,.preview-div h3{font-size:16px;font-weight:600;line-height:1.5;margin:8px 0 4px;color:#444;}
+.edit-div ul,.preview-div ul{padding-left:1.5em;margin:4px 0;}
+.edit-div ul.dash-list,.preview-div ul.dash-list{list-style-type:"— ";}
+.edit-div ul:not(.dash-list),.preview-div ul:not(.dash-list){list-style-type:disc;}
+.edit-div ol,.preview-div ol{padding-left:1.8em;margin:4px 0;list-style-type:decimal;}
+.edit-div img,.preview-div img{max-width:100%;border-radius:6px;margin:6px 0;display:block;}
+.edit-div a,.preview-div a{color:#2563eb;text-decoration:underline;}
+/* Tooltip highlighted words */
+.tw{border-bottom:1.5px dotted #2563eb;color:#2563eb;cursor:help;}
+
+/* Tables */
+.edit-div table,.preview-div table{border-collapse:collapse;width:100%;margin:10px 0;table-layout:fixed;}
+.edit-div table td,.edit-div table th,
+.preview-div table td,.preview-div table th{
+  border:1px solid #d0cfc8;padding:8px 12px;vertical-align:top;min-width:60px;
+  word-break:break-word;position:relative;
+}
+.edit-div table th,.preview-div table th{background:#f5f4ee;font-weight:600;}
+.edit-div table img,.preview-div table img{max-width:100%;height:auto;border-radius:4px;margin:2px 0;}
+/* Table spacing variants */
+.edit-div table.sp-compact td,.edit-div table.sp-compact th,
+.preview-div table.sp-compact td,.preview-div table.sp-compact th{padding:3px 6px;}
+.edit-div table.sp-relaxed td,.edit-div table.sp-relaxed th,
+.preview-div table.sp-relaxed td,.preview-div table.sp-relaxed th{padding:14px 18px;}
+/* Table style variants */
+.edit-div table.st-borderless td,.edit-div table.st-borderless th,
+.preview-div table.st-borderless td,.preview-div table.st-borderless th{border:none;border-bottom:1px solid #e8e7e1;}
+.edit-div table.st-zebra tr:nth-child(even) td,
+.preview-div table.st-zebra tr:nth-child(even) td{background:#f8f7f3;}
+
+/* Selected table toolbar */
+.tbl-toolbar{position:fixed;background:#fff;border:1px solid #d0cfc8;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.12);padding:6px 10px;display:none;flex-direction:column;gap:6px;z-index:1500;min-width:280px;}
+.tbl-toolbar-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.tbl-toolbar label{font-size:11px;color:#888;white-space:nowrap;}
+.tbl-btn{border:1px solid #e0dfd9;border-radius:5px;padding:3px 8px;font-size:12px;cursor:pointer;color:#444;background:#fff;font-family:inherit;white-space:nowrap;}
+.tbl-btn:hover{background:#f0efe9;}
+.tbl-btn.active{background:#1a1a1a;color:#fff;border-color:#1a1a1a;}
+
+.preview-div{flex:1;overflow-y:auto;padding:8px 20px 20px;font-size:15px;line-height:1.8;color:#1a1a1a;display:none;}
+
+/* ── Floating Tooltip ── */
+#floatTip{
+  position:fixed;z-index:9999;
+  background:#1c1c1c;color:#f0f0ee;
+  border-radius:10px;
+  font-size:13px;line-height:1.6;
+  max-width:260px;min-width:120px;
+  box-shadow:0 6px 24px rgba(0,0,0,.22);
+  pointer-events:none;opacity:0;transition:opacity .12s;
+}
+#floatTip.show{opacity:1;}
+#floatTip .tip-inner{
+  padding:10px 12px 6px;
+  max-height:200px;overflow-y:auto;
+  scrollbar-width:thin;scrollbar-color:#555 transparent;
+  word-break:break-word;
+}
+#floatTip .tip-inner::-webkit-scrollbar{width:4px;}
+#floatTip .tip-inner::-webkit-scrollbar-thumb{background:#555;border-radius:2px;}
+#floatTip .tip-foot{
+  padding:3px 10px 7px;
+  display:flex;justify-content:flex-end;
+  border-top:1px solid #333;
+}
+#floatTip .tip-copy{
+  background:none;border:1px solid #555;border-radius:4px;
+  color:#bbb;font-size:11px;padding:2px 7px;cursor:pointer;
+  font-family:inherit;pointer-events:auto;
+}
+#floatTip .tip-copy:hover{background:#333;color:#fff;}
+#floatTip .tip-body{
+  padding:10px 12px 6px;
+  max-height:200px;overflow-y:auto;
+  scrollbar-width:thin;scrollbar-color:#555 transparent;
+  word-break:break-word;user-select:text;cursor:text;
+}
+#floatTip .tip-body::-webkit-scrollbar{width:4px;}
+#floatTip .tip-body::-webkit-scrollbar-thumb{background:#555;border-radius:2px;}
+#floatTip .tip-foot{padding:4px 10px 8px;display:flex;justify-content:flex-end;border-top:1px solid #333;margin-top:4px;}
+#floatTip .tip-copy-btn{background:none;border:1px solid #555;border-radius:5px;color:#ccc;font-size:11px;padding:2px 8px;cursor:pointer;font-family:inherit;}
+#floatTip .tip-copy-btn:hover{background:#333;color:#fff;}
+
+/* Tooltip panel + add bar */
+.tip-panel{border-top:1px solid #e8e7e1;background:#faf9f5;display:none;max-height:180px;overflow-y:auto;flex-shrink:0;}
+.tip-panel-hdr{padding:7px 14px 3px;font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.06em;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:#faf9f5;}
+.tip-panel-hdr button{background:none;border:none;cursor:pointer;font-size:11px;color:#aaa;}
+.tip-row{display:flex;align-items:baseline;padding:4px 14px;gap:8px;font-size:13px;border-top:1px solid #f0efe9;}
+.tip-word{font-weight:600;color:#2563eb;min-width:90px;flex-shrink:0;font-size:12px;}
+.tip-def{color:#444;flex:1;font-size:13px;}
+.tip-del{background:none;border:none;cursor:pointer;color:#ddd;font-size:15px;padding:0 2px;flex-shrink:0;}
+.tip-del:hover{color:#c00;}
+.add-bar{border-top:1px solid #e8e7e1;background:#f5f4ee;padding:10px 14px;display:none;flex-direction:column;gap:7px;flex-shrink:0;}
+.add-bar-lbl{font-size:12px;color:#666;}
+.add-bar-lbl b{color:#1a1a1a;}
+.add-bar-row{display:flex;gap:6px;}
+.add-bar-input{flex:1;border:1px solid #d0cfc8;border-radius:7px;padding:6px 10px;font-size:13px;background:#fff;color:#1a1a1a;outline:none;font-family:inherit;}
+.add-bar-input:focus{border-color:#2563eb;}
+.status{padding:4px 20px;font-size:11px;color:#bbb;border-top:1px solid #e8e7e1;flex-shrink:0;display:flex;gap:14px;}
+
+/* Dialogs */
+.dialog-overlay{position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:3000;display:none;align-items:center;justify-content:center;}
+.dialog{background:#fff;border-radius:12px;padding:20px 24px;width:400px;box-shadow:0 8px 32px rgba(0,0,0,.16);}
+.dialog h3{font-size:15px;font-weight:600;margin-bottom:14px;}
+.dialog-row{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.dialog-row label{font-size:13px;color:#555;white-space:nowrap;min-width:60px;}
+.dialog input[type=text],.dialog input[type=url],.dialog input[type=number]{flex:1;border:1px solid #d0cfc8;border-radius:7px;padding:7px 10px;font-size:14px;outline:none;font-family:inherit;}
+.dialog input:focus{border-color:#2563eb;}
+.dialog-btns{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;}
+.drop-zone{border:2px dashed #d0cfc8;border-radius:8px;padding:18px;text-align:center;color:#aaa;font-size:13px;cursor:pointer;margin-bottom:10px;transition:border-color .15s;}
+.drop-zone:hover,.drop-zone.over{border-color:#2563eb;color:#2563eb;background:#f0f6ff;}
+.img-preview-thumb{max-width:100%;max-height:100px;border-radius:6px;margin-bottom:10px;display:none;}
+</style>
+</head>
+<body>
+
+<!-- Floating tooltip -->
+<div id="floatTip">
+  <div class="tip-inner" id="floatTipBody"></div>
+  <div class="tip-foot"><button class="tip-copy" onclick="copyTip()">复制</button></div>
+</div>
+
+<!-- Table toolbar -->
+<div class="tbl-toolbar" id="tblToolbar">
+  <div class="tbl-toolbar-row">
+    <label>间距</label>
+    <button class="tbl-btn" onclick="setTableClass('spacing','sp-compact')">紧凑</button>
+    <button class="tbl-btn" onclick="setTableClass('spacing','')">正常</button>
+    <button class="tbl-btn" onclick="setTableClass('spacing','sp-relaxed')">宽松</button>
+    <span style="width:8px"></span>
+    <label>样式</label>
+    <button class="tbl-btn" onclick="setTableClass('style','')">线框</button>
+    <button class="tbl-btn" onclick="setTableClass('style','st-borderless')">无框</button>
+    <button class="tbl-btn" onclick="setTableClass('style','st-zebra')">斑马纹</button>
+  </div>
+  <div class="tbl-toolbar-row">
+    <button class="tbl-btn" onclick="tblAddRow()">＋行</button>
+    <button class="tbl-btn" onclick="tblAddCol()">＋列</button>
+    <button class="tbl-btn" onclick="tblDelRow()">－行</button>
+    <button class="tbl-btn" onclick="tblDelCol()">－列</button>
+    <span style="width:8px"></span>
+    <button class="tbl-btn" onclick="tblInsertImg()">🖼 插入图片</button>
+    <span style="flex:1"></span>
+    <button class="tbl-btn" style="color:#c00" onclick="tblDelete()">删除表格</button>
+  </div>
+</div>
+
+<!-- Context menu -->
+<div class="ctx-menu" id="ctxMenu">
+  <div class="ctx-item" onclick="ctxAction('new-note')">📄 在此目录新建笔记</div>
+  <div class="ctx-item" onclick="ctxAction('new-folder')">📁 新建子目录</div>
+  <div class="ctx-item" onclick="ctxAction('rename')">✏️ 重命名</div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-item danger" onclick="ctxAction('delete')">🗑 删除目录</div>
+</div>
+
+<!-- Link dialog -->
+<div class="dialog-overlay" id="dlgLink">
+  <div class="dialog">
+    <h3>插入链接</h3>
+    <div class="dialog-row"><label>文字</label><input type="text" id="dlgLinkText" placeholder="显示文字（留空用URL）"/></div>
+    <div class="dialog-row"><label>URL</label><input type="url" id="dlgLinkUrl" placeholder="https://"/></div>
+    <div class="dialog-btns">
+      <button class="tb" onclick="closeDlg('dlgLink')">取消</button>
+      <button class="tb accent" onclick="insertLink()">插入</button>
+    </div>
+  </div>
+</div>
+
+<!-- Image dialog -->
+<div class="dialog-overlay" id="dlgImg">
+  <div class="dialog">
+    <h3 id="dlgImgTitle">插入图片</h3>
+    <div class="drop-zone" id="dropZone" onclick="document.getElementById('imgFilePicker').click()">点击选择图片，或将图片拖入此处</div>
+    <input type="file" id="imgFilePicker" accept="image/*" style="display:none" onchange="onImgFile(this)"/>
+    <img id="imgPreviewThumb" class="img-preview-thumb"/>
+    <div class="dialog-row"><label>最大宽度</label><input type="number" id="imgMaxWidth" value="800" placeholder="像素，留空原尺寸"/></div>
+    <div class="dialog-btns">
+      <button class="tb" onclick="closeDlg('dlgImg')">取消</button>
+      <button class="tb accent" id="imgInsertBtn" onclick="doInsertImgFromDialog()" disabled>插入</button>
+    </div>
+  </div>
+</div>
+
+<!-- Export dialog -->
+<div class="dialog-overlay" id="dlgExport">
+  <div class="dialog" style="width:460px">
+    <h3>导出笔记</h3>
+    <div style="margin-bottom:10px;">
+      <label style="font-size:13px;color:#555;display:block;margin-bottom:6px;">导出范围</label>
+      <div style="display:flex;flex-direction:column;gap:6px;" id="exportScopeWrap">
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;">
+          <input type="radio" name="exportScope" value="all" checked onchange="updateExportPreview()"> 全部笔记（<span id="expCountAll">0</span> 篇）
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;">
+          <input type="radio" name="exportScope" value="folder" onchange="updateExportPreview()"> 当前目录：<b id="expFolderName">—</b>（<span id="expCountFolder">0</span> 篇）
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;">
+          <input type="radio" name="exportScope" value="note" onchange="updateExportPreview()"> 仅当前笔记：<b id="expNoteName">—</b>
+        </label>
+      </div>
+    </div>
+    <div style="margin-bottom:10px;">
+      <label style="font-size:13px;color:#555;display:block;margin-bottom:4px;">文件名</label>
+      <input type="text" id="exportFilename" placeholder="notes_export" style="width:100%;border:1px solid #d0cfc8;border-radius:7px;padding:7px 10px;font-size:14px;outline:none;font-family:inherit;"/>
+    </div>
+    <div style="background:#f5f4ee;border-radius:7px;padding:8px 12px;font-size:12px;color:#888;margin-bottom:14px;" id="exportPreview"></div>
+    <div class="dialog-btns">
+      <button class="tb" onclick="closeDlg('dlgExport')">取消</button>
+      <button class="tb green" onclick="doExport()">⬇ 下载 JSON</button>
+    </div>
+  </div>
+</div>
+
+<!-- Import dialog -->
+<div class="dialog-overlay" id="dlgImport">
+  <div class="dialog" style="width:460px">
+    <h3>导入笔记</h3>
+    <div class="drop-zone" id="importDropZone" onclick="document.getElementById('importFilePicker').click()">
+      点击选择 .json 文件，或将文件拖入此处
+    </div>
+    <input type="file" id="importFilePicker" accept=".json" style="display:none" onchange="onImportFile(this)"/>
+    <div id="importPreview" style="display:none;margin-bottom:12px;">
+      <div style="background:#f5f4ee;border-radius:7px;padding:10px 12px;font-size:13px;color:#444;margin-bottom:10px;" id="importPreviewText"></div>
+      <label style="font-size:13px;color:#555;display:block;margin-bottom:6px;">导入方式</label>
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;">
+          <input type="radio" name="importMode" value="merge" checked> 合并（保留现有笔记，跳过重复 ID）
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;">
+          <input type="radio" name="importMode" value="replace"> 替换全部（清除现有笔记后导入）
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;">
+          <input type="radio" name="importMode" value="update"> 合并并覆盖（相同 ID 的笔记用导入版本覆盖）
+        </label>
+      </div>
+    </div>
+    <div class="dialog-btns">
+      <button class="tb" onclick="closeDlg('dlgImport')">取消</button>
+      <button class="tb accent" id="importConfirmBtn" onclick="doImport()" disabled>⬆ 导入</button>
+    </div>
+  </div>
+</div>
+
+<!-- Table dialog -->
+<div class="dialog-overlay" id="dlgTable">
+  <div class="dialog" style="width:320px">
+    <h3>插入表格</h3>
+    <div class="dialog-row"><label>行数</label><input type="number" id="tblRows" value="3" min="1" max="20"/></div>
+    <div class="dialog-row"><label>列数</label><input type="number" id="tblCols" value="3" min="1" max="10"/></div>
+    <div class="dialog-row"><label>标题行</label>
+      <select id="tblHeader" style="flex:1;border:1px solid #d0cfc8;border-radius:7px;padding:7px 10px;font-size:14px;outline:none;">
+        <option value="1">有（第一行加粗）</option>
+        <option value="0">无</option>
+      </select>
+    </div>
+    <div class="dialog-btns">
+      <button class="tb" onclick="closeDlg('dlgTable')">取消</button>
+      <button class="tb accent" onclick="doInsertTable()">插入</button>
+    </div>
+  </div>
+</div>
+
+<div class="app">
+  <div class="sidebar">
+    <div class="sidebar-top">
+      <div class="sidebar-title">笔记</div>
+      <input class="search-input" placeholder="🔍 搜索…" oninput="filterNotes(this.value)"/>
+      <div class="sidebar-actions">
+        <button class="sa-btn" onclick="newNote(null)">📄 新建笔记</button>
+        <button class="sa-btn" onclick="newFolder(null)">📁 新建目录</button>
+      </div>
+    </div>
+    <div class="tree-wrap" id="treeWrap"></div>
+  </div>
+
+  <div class="editor">
+    <div class="toolbar">
+      <button class="tb" id="btnEdit" onclick="setMode('edit')">✏️ 编辑</button>
+      <button class="tb" id="btnPreview" onclick="setMode('preview')">👁 预览</button>
+      <div class="tb-sep"></div>
+      <button class="tb accent" onclick="openAddBar()">＋ 添加解释</button>
+      <button class="tb" id="btnTips" onclick="toggleTipPanel()">📋 解释列表</button>
+      <div class="tb-sep"></div>
+      <button class="tb green" onclick="openExportDlg()">⬇ 导出</button>
+      <button class="tb" onclick="openImportDlg()">⬆ 导入</button>
+      <div class="tb-sep"></div>
+      <button class="tb red" onclick="deleteNote()">🗑 删除</button>
+    </div>
+
+    <div class="fmt-bar" id="fmtBar">
+      <select class="fmt-select" id="blockSelect" onchange="fmtBlock(this.value)" title="段落格式">
+        <option value="p">正文</option>
+        <option value="h1">标题 H1</option>
+        <option value="h2">小标题 H2</option>
+        <option value="h3">副标题 H3</option>
+      </select>
+      <div class="fmt-sep"></div>
+      <button class="fmt-btn" id="fmtBold"   onclick="fmt('bold')"         title="加粗"><b>B</b></button>
+      <button class="fmt-btn" id="fmtItalic" onclick="fmt('italic')"       title="斜体"><i>I</i></button>
+      <button class="fmt-btn" id="fmtUnder"  onclick="fmt('underline')"    title="下划线"><u>U</u></button>
+      <button class="fmt-btn" id="fmtStrike" onclick="fmt('strikeThrough')"title="删除线"><s>S</s></button>
+      <div class="fmt-sep"></div>
+      <button class="fmt-btn" id="fmtBullet" onclick="fmtList('bullet')"   title="Bullet列表">• 列表</button>
+      <button class="fmt-btn" id="fmtDash"   onclick="fmtList('dash')"     title="Dash列表">— 列表</button>
+      <button class="fmt-btn" id="fmtOL"     onclick="fmtList('ol')"       title="有序列表">1. 列表</button>
+      <button class="fmt-btn"                onclick="openTableDlg()"      title="插入表格">⊞ 表格</button>
+      <div class="fmt-sep"></div>
+      <select class="fmt-select" onchange="fmtSize(this.value)">
+        <option value="">字号</option>
+        <option value="1">小</option>
+        <option value="3">中</option>
+        <option value="4">大</option>
+        <option value="5">特大</option>
+      </select>
+      <div class="fmt-sep"></div>
+      <div class="color-row">
+        <span style="font-size:11px;color:#888;">文字</span>
+        <button class="color-swatch" style="background:#1a1a1a" onclick="fmtColor('#1a1a1a')"></button>
+        <button class="color-swatch" style="background:#c00000" onclick="fmtColor('#c00000')"></button>
+        <button class="color-swatch" style="background:#0070c0" onclick="fmtColor('#0070c0')"></button>
+        <button class="color-swatch" style="background:#00703c" onclick="fmtColor('#00703c')"></button>
+        <button class="color-swatch" style="background:#7030a0" onclick="fmtColor('#7030a0')"></button>
+        <button class="color-swatch" style="background:#c55a11" onclick="fmtColor('#c55a11')"></button>
+      </div>
+      <div class="fmt-sep"></div>
+      <div class="color-row">
+        <span style="font-size:11px;color:#888;">高亮</span>
+        <button class="color-swatch" style="background:#fff2cc;border-color:#ccc" onclick="fmtBg('#fff2cc')"></button>
+        <button class="color-swatch" style="background:#e2efda;border-color:#ccc" onclick="fmtBg('#e2efda')"></button>
+        <button class="color-swatch" style="background:#dae8fc;border-color:#ccc" onclick="fmtBg('#dae8fc')"></button>
+        <button class="color-swatch" style="background:#f8cecc;border-color:#ccc" onclick="fmtBg('#f8cecc')"></button>
+        <button class="color-swatch" style="background:transparent;background-image:linear-gradient(45deg,#ccc 25%,transparent 25%,transparent 75%,#ccc 75%),linear-gradient(45deg,#ccc 25%,transparent 25%,transparent 75%,#ccc 75%);background-size:6px 6px;background-position:0 0,3px 3px" onclick="fmtBg('')"></button>
+      </div>
+      <div class="fmt-sep"></div>
+      <button class="fmt-btn" onclick="openLinkDlg()">🔗 链接</button>
+      <button class="fmt-btn" onclick="openImgDlg(false)">🖼 图片</button>
+      <button class="fmt-btn" onclick="fmt('removeFormat')" style="font-size:11px;">✕ 格式</button>
+    </div>
+
+    <input class="note-title-input" id="noteTitle" placeholder="标题" oninput="saveTitle()"/>
+    <div class="note-meta" id="noteMeta"></div>
+
+    <div class="content-wrap">
+      <div class="edit-div" id="editDiv" contenteditable="true"
+           data-placeholder="开始写笔记…"
+           oninput="onContentInput()"
+           onkeyup="updateFmtState()"
+           onmouseup="onEditorClick(event)"
+           onclick="onEditorClick(event)"
+           onpaste="handlePaste(event)"></div>
+      <div class="preview-div" id="previewDiv"></div>
+    </div>
+
+    <div class="tip-panel" id="tipPanel">
+      <div class="tip-panel-hdr"><span>解释词汇</span><button onclick="toggleTipPanel()">收起 ▲</button></div>
+      <div id="tipRows"></div>
+    </div>
+    <div class="add-bar" id="addBar">
+      <div class="add-bar-lbl">为 <b id="selWordLabel"></b> 添加解释：</div>
+      <div class="add-bar-row">
+        <input class="add-bar-input" id="addBarInput" placeholder="输入解释，或留空让 Claude AI 自动生成" onkeydown="if(event.key==='Enter')confirmAdd()"/>
+        <button class="tb green" onclick="confirmAdd()">✓ 确定</button>
+        <button class="tb" onclick="closeAddBar()">✕</button>
+      </div>
+    </div>
+    <div class="status" id="statusBar"></div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════
+// DATA
+// ══════════════════════════════════════
+const SK='notes_v4';
+function loadDb(){try{return JSON.parse(localStorage.getItem(SK))||makeDefault();}catch(e){return makeDefault();}}
+function makeDefault(){
+  return{folders:[
+    {id:'f1',name:'神学笔记',parentId:null,open:true},
+    {id:'f2',name:'读经笔记',parentId:null,open:true},
+    {id:'f3',name:'保罗书信',parentId:'f2',open:true}
+  ],notes:[
+    {id:'n1',title:'宣教教会笔记',folderId:'f1',
+     html:'<h1>宣教教会</h1><p>Missio Dei 是本章核心概念。</p><h2>主要区别</h2><ul><li>宣教教会强调"<b>成为和行动</b>"</li><li>维持型教会只是"差派和支持"</li></ul><h3>神学依据</h3><ul class="dash-list"><li>Imago Dei：人受造为彰显神的形象</li><li>大使命：被差派到地极作见证</li></ul>',
+     tooltips:{'Missio Dei':'拉丁语，意为"神的使命"。宣教的根源在于神自己，教会只是被差派的器皿，而非主动发起者。','Imago Dei':'拉丁语，意为"神的形象"。创1:26-27记载人按神的形象被造，是人类尊严与宣教使命的神学根基。','宣教教会':'以神的使命（Missio Dei）为存在根本的教会。每位成员都是被差派的宣教士，强调参与而非仅代理。'},
+     updated:Date.now()},
+    {id:'n2',title:'使徒行传 1:8',folderId:'f2',
+     html:'<p>徒1:8："但<span style="color:#c00000">圣灵</span>降临在你们身上，你们就必得着能力。"</p><ol><li>耶路撒冷</li><li>犹太全地和撒玛利亚</li><li>地极</li></ol><p>Pentecost 之后教会从维持转向宣教。</p>',
+     tooltips:{'Pentecost':'五旬节。圣灵降临在门徒身上，记载于徒第二章，是教会宣教使命正式启动的历史时刻。'},
+     updated:Date.now()-86400000},
+    {id:'n3',title:'罗马书概览',folderId:'f3',html:'<p>保罗最系统的神学著作。</p>',tooltips:{},updated:Date.now()-172800000}
+  ],currentId:'n1'};
+}
+let db=loadDb();
+function saveDb(){localStorage.setItem(SK,JSON.stringify(db));}
+function currentNote(){return db.notes.find(n=>n.id===db.currentId);}
+
+// ══════════════════════════════════════
+// TREE
+// ══════════════════════════════════════
+let filterText='',ctxFolderId=null,draggingId=null,draggingType=null;
+function renderTree(){
+  const w=document.getElementById('treeWrap');w.innerHTML='';
+  if(filterText){renderFlat(w);return;}
+  renderFolderChildren(w,null);
+  const uncat=db.notes.filter(n=>!n.folderId);
+  if(uncat.length){const h=document.createElement('div');h.className='uncategorized-header';h.textContent='未分类';w.appendChild(h);uncat.forEach(n=>w.appendChild(makeNoteRow(n)));}
+}
+function renderFolderChildren(p,pid){
+  db.folders.filter(f=>f.parentId===pid).forEach(f=>{
+    p.appendChild(makeFolderRow(f));
+    if(f.open){const ch=document.createElement('div');ch.className='folder-children';renderFolderChildren(ch,f.id);db.notes.filter(n=>n.folderId===f.id).forEach(n=>ch.appendChild(makeNoteRow(n)));p.appendChild(ch);}
+  });
+}
+function makeFolderRow(f){
+  const r=document.createElement('div');r.className='folder-row';r.dataset.folderId=f.id;
+  r.innerHTML=`<span class="folder-caret ${f.open?'open':''}">▶</span><span class="folder-icon">${f.open?'📂':'📁'}</span><span class="folder-name">${esc(f.name)}</span><span class="folder-count">${countNotes(f.id)||''}</span><button class="folder-menu-btn">⋯</button>`;
+  r.querySelector('.folder-caret').onclick=e=>{e.stopPropagation();toggleFolder(f.id);};
+  r.querySelector('.folder-icon').onclick=e=>{e.stopPropagation();toggleFolder(f.id);};
+  r.querySelector('.folder-name').onclick=e=>{e.stopPropagation();toggleFolder(f.id);};
+  r.querySelector('.folder-menu-btn').onclick=e=>{e.stopPropagation();openCtxMenu(e,f.id);};
+  r.addEventListener('dragover',e=>{e.preventDefault();r.classList.add('drag-over');});
+  r.addEventListener('dragleave',()=>r.classList.remove('drag-over'));
+  r.addEventListener('drop',e=>{e.preventDefault();r.classList.remove('drag-over');handleDrop(f.id);});
+  r.draggable=true;r.addEventListener('dragstart',e=>{draggingId=f.id;draggingType='folder';e.dataTransfer.effectAllowed='move';});
+  return r;
+}
+function makeNoteRow(n){
+  const r=document.createElement('div');r.className='note-item'+(n.id===db.currentId?' active':'');
+  const tips=Object.keys(n.tooltips).length;
+  r.innerHTML=`<span class="note-icon">📄</span><div class="note-info"><div class="note-item-title">${esc(n.title||'无标题')}</div><div class="note-item-preview">${esc(stripHtml(n.html).slice(0,35))}</div></div>${tips?`<span class="note-tip-badge">${tips}</span>`:''}`;
+  r.onclick=()=>selectNote(n.id);
+  r.draggable=true;
+  r.addEventListener('dragstart',e=>{draggingId=n.id;draggingType='note';e.dataTransfer.effectAllowed='move';});
+  r.addEventListener('dragover',e=>{e.preventDefault();r.classList.add('drag-over');});
+  r.addEventListener('dragleave',()=>r.classList.remove('drag-over'));
+  r.addEventListener('drop',e=>{e.preventDefault();r.classList.remove('drag-over');if(draggingType==='note'&&draggingId!==n.id){const dn=db.notes.find(x=>x.id===draggingId);if(dn){dn.folderId=n.folderId;saveDb();renderTree();}}});
+  return r;
+}
+function renderFlat(w){const q=filterText.toLowerCase();db.notes.filter(n=>(n.title+stripHtml(n.html)).toLowerCase().includes(q)).forEach(n=>w.appendChild(makeNoteRow(n)));}
+function filterNotes(v){filterText=v;renderTree();}
+function countNotes(fid){return db.notes.filter(n=>n.folderId===fid).length+db.folders.filter(f=>f.parentId===fid).reduce((s,f)=>s+countNotes(f.id),0);}
+function toggleFolder(id){const f=db.folders.find(x=>x.id===id);if(f){f.open=!f.open;saveDb();renderTree();}}
+function handleDrop(tfid){
+  if(draggingType==='note'){const n=db.notes.find(x=>x.id===draggingId);if(n)n.folderId=tfid;}
+  else if(draggingType==='folder'&&draggingId!==tfid){const f=db.folders.find(x=>x.id===draggingId);if(f&&!isDesc(tfid,draggingId))f.parentId=tfid;}
+  draggingId=null;draggingType=null;saveDb();renderTree();
+}
+function isDesc(cid,aid){let f=db.folders.find(x=>x.id===cid);while(f){if(f.parentId===aid)return true;f=db.folders.find(x=>x.id===f.parentId);}return false;}
+function openCtxMenu(e,fid){ctxFolderId=fid;const m=document.getElementById('ctxMenu');m.style.display='block';m.style.left=e.clientX+'px';m.style.top=e.clientY+'px';}
+document.addEventListener('click',e=>{if(!e.target.closest('#ctxMenu'))document.getElementById('ctxMenu').style.display='none';});
+function ctxAction(a){
+  const f=db.folders.find(x=>x.id===ctxFolderId);if(!f)return;
+  if(a==='new-note')newNote(ctxFolderId);
+  else if(a==='new-folder')newFolder(ctxFolderId);
+  else if(a==='rename')startRename(ctxFolderId);
+  else if(a==='delete'){if(!confirm(`删除目录"${f.name}"？笔记将变为未分类。`))return;db.notes.filter(n=>n.folderId===ctxFolderId).forEach(n=>n.folderId=null);db.folders=db.folders.filter(x=>x.id!==ctxFolderId);saveDb();renderTree();}
+}
+function startRename(fid){
+  const row=document.querySelector(`[data-folder-id="${fid}"] .folder-name`);if(!row){renderTree();return;}
+  const f=db.folders.find(x=>x.id===fid);
+  const inp=document.createElement('input');inp.className='folder-name-input';inp.value=f.name;
+  row.replaceWith(inp);inp.focus();inp.select();
+  const done=()=>{f.name=inp.value.trim()||f.name;saveDb();renderTree();};
+  inp.onblur=done;inp.onkeydown=e=>{if(e.key==='Enter')done();if(e.key==='Escape')renderTree();};
+}
+function newFolder(pid){const id='f'+Date.now();db.folders.push({id,name:'新目录',parentId:pid||null,open:true});if(pid){const p=db.folders.find(f=>f.id===pid);if(p)p.open=true;}saveDb();renderTree();setTimeout(()=>startRename(id),50);}
+function newNote(fid){const n={id:'n'+Date.now(),title:'',folderId:fid||null,html:'',tooltips:{},updated:Date.now()};db.notes.unshift(n);db.currentId=n.id;saveDb();renderTree();document.getElementById('noteTitle').value='';document.getElementById('editDiv').innerHTML='';setMode('edit');document.getElementById('noteTitle').focus();updateStatus();}
+function deleteNote(){if(!confirm('确认删除此笔记？'))return;db.notes=db.notes.filter(n=>n.id!==db.currentId);if(!db.notes.length){newNote(null);return;}db.currentId=db.notes[0].id;selectNote(db.currentId);}
+function selectNote(id){db.currentId=id;const n=currentNote();document.getElementById('noteTitle').value=n.title;document.getElementById('editDiv').innerHTML=n.html||'';closeAddBar();hideTblToolbar();document.getElementById('tipPanel').style.display='none';document.getElementById('btnTips').classList.remove('on');setMode('edit');renderTree();updateStatus();}
+function saveTitle(){const n=currentNote();if(!n)return;n.title=document.getElementById('noteTitle').value;n.updated=Date.now();saveDb();renderTree();}
+function onContentInput(){const n=currentNote();if(!n)return;n.html=document.getElementById('editDiv').innerHTML;n.updated=Date.now();saveDb();renderTree();}
+
+// ══════════════════════════════════════
+// MODE
+// ══════════════════════════════════════
+let mode='edit';
+function setMode(m){
+  mode=m;hideTblToolbar();
+  const ed=document.getElementById('editDiv'),pv=document.getElementById('previewDiv'),fb=document.getElementById('fmtBar');
+  if(m==='edit'){ed.style.display='block';pv.style.display='none';fb.style.display='flex';document.getElementById('btnEdit').classList.add('on');document.getElementById('btnPreview').classList.remove('on');}
+  else{ed.style.display='none';pv.style.display='block';fb.style.display='none';document.getElementById('btnPreview').classList.add('on');document.getElementById('btnEdit').classList.remove('on');renderPreview();}
+}
+function renderPreview(){
+  const n=currentNote();if(!n)return;
+  const tmp=document.createElement('div');tmp.innerHTML=n.html||'';
+  const words=Object.keys(n.tooltips).sort((a,b)=>b.length-a.length);
+  if(words.length)wrapTooltipsInDom(tmp,n.tooltips,words);
+  document.getElementById('previewDiv').innerHTML=tmp.innerHTML;
+  document.getElementById('previewDiv').querySelectorAll('.tw').forEach(el=>{el.addEventListener('mouseenter',showTip);el.addEventListener('mouseleave',scheduleTipHide);});
+}
+function wrapTooltipsInDom(root,tooltips,words){
+  const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);
+  const nodes=[];let node;while((node=walker.nextNode()))nodes.push(node);
+  const pat=words.map(w=>w.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('|');
+  const re=new RegExp('('+pat+')','g');
+  nodes.forEach(tn=>{
+    if(!re.test(tn.textContent))return;re.lastIndex=0;
+    const frag=document.createDocumentFragment();let last=0,m;
+    while((m=re.exec(tn.textContent))!==null){
+      if(m.index>last)frag.appendChild(document.createTextNode(tn.textContent.slice(last,m.index)));
+      const sp=document.createElement('span');sp.className='tw';sp.textContent=m[0];sp.dataset.tip=tooltips[m[0]];frag.appendChild(sp);last=m.index+m[0].length;
+    }
+    if(last<tn.textContent.length)frag.appendChild(document.createTextNode(tn.textContent.slice(last)));
+    tn.parentNode.replaceChild(frag,tn);
+  });
+}
+
+// ══════════════════════════════════════
+// TOOLTIP — working simple version + copy button
+// ══════════════════════════════════════
+const ftEl=document.getElementById('floatTip');
+const ftBody=document.getElementById('floatTipBody');
+let tipHideTimer=null;
+let currentTipText='';
+
+function showTip(e){
+  clearTimeout(tipHideTimer);
+  currentTipText=e.currentTarget.dataset.tip||'';
+  ftBody.textContent=currentTipText;
+  ftEl.classList.add('show');
+  posTip(e.currentTarget);
+}
+function posTip(el){
+  const r=el.getBoundingClientRect();
+  let top=r.top-ftEl.offsetHeight-10;
+  let left=r.left+r.width/2-ftEl.offsetWidth/2;
+  if(top<8)top=r.bottom+8;
+  if(left<8)left=8;
+  if(left+ftEl.offsetWidth>window.innerWidth-8)left=window.innerWidth-ftEl.offsetWidth-8;
+  ftEl.style.top=top+'px';ftEl.style.left=left+'px';
+}
+function scheduleTipHide(){tipHideTimer=setTimeout(()=>ftEl.classList.remove('show'),350);}
+function hideTip(){ftEl.classList.remove('show');}
+ftEl.addEventListener('mouseenter',()=>clearTimeout(tipHideTimer));
+ftEl.addEventListener('mouseleave',hideTip);
+function copyTip(){
+  navigator.clipboard.writeText(currentTipText).then(()=>{
+    const b=ftEl.querySelector('.tip-copy');b.textContent='已复制✓';
+    setTimeout(()=>b.textContent='复制',1500);
+  });
+}
+
+// ══════════════════════════════════════
+// TABLE
+// ══════════════════════════════════════
+let activeTbl=null;
+
+function openTableDlg(){document.getElementById('dlgTable').style.display='flex';}
+function doInsertTable(){
+  const rows=parseInt(document.getElementById('tblRows').value)||3;
+  const cols=parseInt(document.getElementById('tblCols').value)||3;
+  const hasHeader=document.getElementById('tblHeader').value==='1';
+  closeDlg('dlgTable');
+  let html='<table><tbody>';
+  for(let r=0;r<rows;r++){
+    html+='<tr>';
+    for(let c=0;c<cols;c++){
+      const tag=(hasHeader&&r===0)?'th':'td';
+      html+=`<${tag}>&nbsp;</${tag}>`;
+    }
+    html+='</tr>';
+  }
+  html+='</tbody></table><p><br></p>';
+  document.getElementById('editDiv').focus();
+  document.execCommand('insertHTML',false,html);
+  onContentInput();
+}
+
+function onEditorClick(e){
+  updateFmtState();
+  const tbl=e.target.closest('table');
+  if(tbl&&tbl.closest('#editDiv')){showTblToolbar(tbl,e);}
+  else{hideTblToolbar();}
+}
+
+function showTblToolbar(tbl,e){
+  activeTbl=tbl;
+  const bar=document.getElementById('tblToolbar');
+  bar.style.display='flex';
+  // Position below click point
+  let left=e.clientX,top=e.clientY+16;
+  if(left+300>window.innerWidth)left=window.innerWidth-308;
+  if(top+80>window.innerHeight)top=e.clientY-90;
+  bar.style.left=left+'px';bar.style.top=top+'px';
+  // Reflect current classes
+  document.querySelectorAll('#tblToolbar .tbl-btn').forEach(b=>b.classList.remove('active'));
+  const sp=tbl.classList.contains('sp-compact')?'sp-compact':tbl.classList.contains('sp-relaxed')?'sp-relaxed':'';
+  const st=tbl.classList.contains('st-borderless')?'st-borderless':tbl.classList.contains('st-zebra')?'st-zebra':'';
+  document.querySelectorAll('#tblToolbar .tbl-btn').forEach(b=>{
+    if((b.textContent.trim()==='紧凑'&&sp==='sp-compact')||(b.textContent.trim()==='正常'&&sp==='')||(b.textContent.trim()==='宽松'&&sp==='sp-relaxed'))b.classList.add('active');
+    if((b.textContent.trim()==='线框'&&st==='')||(b.textContent.trim()==='无框'&&st==='st-borderless')||(b.textContent.trim()==='斑马纹'&&st==='st-zebra'))b.classList.add('active');
+  });
+}
+function hideTblToolbar(){document.getElementById('tblToolbar').style.display='none';activeTbl=null;}
+
+function setTableClass(type,cls){
+  if(!activeTbl)return;
+  if(type==='spacing'){activeTbl.classList.remove('sp-compact','sp-relaxed');if(cls)activeTbl.classList.add(cls);}
+  else{activeTbl.classList.remove('st-borderless','st-zebra');if(cls)activeTbl.classList.add(cls);}
+  onContentInput();
+  // re-highlight buttons
+  document.querySelectorAll('#tblToolbar .tbl-btn').forEach(b=>b.classList.remove('active'));
+  const sp=activeTbl.classList.contains('sp-compact')?'紧凑':activeTbl.classList.contains('sp-relaxed')?'宽松':'正常';
+  const st=activeTbl.classList.contains('st-borderless')?'无框':activeTbl.classList.contains('st-zebra')?'斑马纹':'线框';
+  document.querySelectorAll('#tblToolbar .tbl-btn').forEach(b=>{if(b.textContent.trim()===sp||b.textContent.trim()===st)b.classList.add('active');});
+}
+
+function getSelCell(){
+  const sel=window.getSelection();if(!sel.rangeCount)return null;
+  let el=sel.getRangeAt(0).commonAncestorContainer;
+  while(el&&el.nodeName!=='TD'&&el.nodeName!=='TH')el=el.parentNode;
+  return el&&(el.nodeName==='TD'||el.nodeName==='TH')?el:null;
+}
+
+function tblAddRow(){
+  if(!activeTbl)return;
+  const cell=getSelCell();
+  const refRow=cell?cell.closest('tr'):activeTbl.rows[activeTbl.rows.length-1];
+  const cols=activeTbl.rows[0]?activeTbl.rows[0].cells.length:1;
+  const newRow=activeTbl.insertRow(refRow?refRow.rowIndex+1:activeTbl.rows.length);
+  for(let i=0;i<cols;i++){const td=newRow.insertCell();td.innerHTML='&nbsp;';}
+  onContentInput();
+}
+function tblAddCol(){
+  if(!activeTbl)return;
+  const cell=getSelCell();
+  const colIdx=cell?cell.cellIndex+1:activeTbl.rows[0].cells.length;
+  for(let r=0;r<activeTbl.rows.length;r++){
+    const row=activeTbl.rows[r];
+    const tag=row.cells[0]&&row.cells[0].nodeName==='TH'?'th':'td';
+    const el=document.createElement(tag);el.innerHTML='&nbsp;';
+    row.insertBefore(el,row.cells[colIdx]||null);
+  }
+  onContentInput();
+}
+function tblDelRow(){
+  if(!activeTbl||activeTbl.rows.length<=1)return;
+  const cell=getSelCell();
+  const idx=cell?cell.closest('tr').rowIndex:activeTbl.rows.length-1;
+  activeTbl.deleteRow(idx);onContentInput();
+}
+function tblDelCol(){
+  if(!activeTbl||!activeTbl.rows[0]||activeTbl.rows[0].cells.length<=1)return;
+  const cell=getSelCell();
+  const idx=cell?cell.cellIndex:activeTbl.rows[0].cells.length-1;
+  for(let r=0;r<activeTbl.rows.length;r++){if(activeTbl.rows[r].cells[idx])activeTbl.rows[r].deleteCell(idx);}
+  onContentInput();
+}
+function tblDelete(){if(!activeTbl)return;if(!confirm('删除整个表格？'))return;activeTbl.remove();hideTblToolbar();onContentInput();}
+
+function tblInsertImg(){
+  if(!activeTbl)return;
+  // focus into a cell first
+  const cell=getSelCell()||activeTbl.rows[0]?.cells[0];
+  if(cell){const s=window.getSelection(),r=document.createRange();r.selectNodeContents(cell);r.collapse(false);s.removeAllRanges();s.addRange(r);}
+  openImgDlg(true);
+}
+
+// ══════════════════════════════════════
+// FORMAT
+// ══════════════════════════════════════
+function fmt(cmd){document.getElementById('editDiv').focus();document.execCommand(cmd,false,null);updateFmtState();onContentInput();}
+function fmtColor(c){document.getElementById('editDiv').focus();document.execCommand('foreColor',false,c);onContentInput();}
+function fmtBg(c){document.getElementById('editDiv').focus();document.execCommand(c?'hiliteColor':'removeFormat',false,c||null);onContentInput();}
+function fmtSize(v){if(!v)return;document.getElementById('editDiv').focus();document.execCommand('fontSize',false,v);onContentInput();}
+function fmtBlock(tag){document.getElementById('editDiv').focus();document.execCommand('formatBlock',false,tag);onContentInput();updateFmtState();}
+function fmtList(type){
+  const ed=document.getElementById('editDiv');ed.focus();
+  if(type==='ol'){document.execCommand('insertOrderedList',false,null);}
+  else{
+    document.execCommand('insertUnorderedList',false,null);
+    requestAnimationFrame(()=>{
+      const sel=window.getSelection();if(!sel.rangeCount)return;
+      let el=sel.getRangeAt(0).commonAncestorContainer;
+      while(el&&el!==ed){if(el.nodeName==='UL'){type==='dash'?el.classList.add('dash-list'):el.classList.remove('dash-list');break;}el=el.parentNode;}
+      onContentInput();updateFmtState();
+    });
+  }
+  if(type!=='dash')setTimeout(()=>{onContentInput();updateFmtState();},50);
+}
+function updateFmtState(){
+  document.getElementById('fmtBold').classList.toggle('active',document.queryCommandState('bold'));
+  document.getElementById('fmtItalic').classList.toggle('active',document.queryCommandState('italic'));
+  document.getElementById('fmtUnder').classList.toggle('active',document.queryCommandState('underline'));
+  document.getElementById('fmtStrike').classList.toggle('active',document.queryCommandState('strikeThrough'));
+  const tag=(document.queryCommandValue('formatBlock')||'p').toLowerCase().replace(/[<>]/g,'');
+  const bs=document.getElementById('blockSelect');
+  if(['p','h1','h2','h3'].includes(tag))bs.value=tag;
+  document.getElementById('fmtOL').classList.toggle('active',document.queryCommandState('insertOrderedList'));
+  const inUL=document.queryCommandState('insertUnorderedList');
+  let isDash=false;
+  const s=window.getSelection();
+  if(s&&s.rangeCount){let el=s.getRangeAt(0).commonAncestorContainer;const ed=document.getElementById('editDiv');while(el&&el!==ed){if(el.nodeName==='UL'){isDash=el.classList.contains('dash-list');break;}el=el.parentNode;}}
+  document.getElementById('fmtBullet').classList.toggle('active',inUL&&!isDash);
+  document.getElementById('fmtDash').classList.toggle('active',inUL&&isDash);
+}
+
+// Link
+let savedSel=null;
+function openLinkDlg(){savedSel=saveSel();const s=window.getSelection();document.getElementById('dlgLinkText').value=s&&!s.isCollapsed?s.toString():'';document.getElementById('dlgLinkUrl').value='https://';document.getElementById('dlgLink').style.display='flex';setTimeout(()=>document.getElementById('dlgLinkUrl').focus(),50);}
+function closeDlg(id){document.getElementById(id).style.display='none';}
+function insertLink(){const t=document.getElementById('dlgLinkText').value.trim(),u=document.getElementById('dlgLinkUrl').value.trim();if(!u||u==='https://'){closeDlg('dlgLink');return;}closeDlg('dlgLink');document.getElementById('editDiv').focus();restoreSel(savedSel);document.execCommand('insertHTML',false,`<a href="${esc(u)}" target="_blank" style="color:#2563eb">${esc(t||u)}</a>`);onContentInput();}
+function saveSel(){const s=window.getSelection();return s.rangeCount?s.getRangeAt(0).cloneRange():null;}
+function restoreSel(r){if(!r)return;const s=window.getSelection();s.removeAllRanges();s.addRange(r);}
+
+// Image
+let pendingImgData=null;
+let imgInsertForTable=false;
+function openImgDlg(forTable){
+  imgInsertForTable=!!forTable;
+  savedSel=saveSel();
+  pendingImgData=null;
+  document.getElementById('imgPreviewThumb').style.display='none';
+  document.getElementById('imgPreviewThumb').src='';
+  document.getElementById('imgMaxWidth').value='800';
+  document.getElementById('imgInsertBtn').disabled=true;
+  document.getElementById('imgFilePicker').value='';
+  document.getElementById('dlgImgTitle').textContent=forTable?'在表格中插入图片':'插入图片';
+  document.getElementById('dlgImg').style.display='flex';
+  const dz=document.getElementById('dropZone');
+  dz.ondragover=e=>{e.preventDefault();dz.classList.add('over');};
+  dz.ondragleave=()=>dz.classList.remove('over');
+  dz.ondrop=e=>{e.preventDefault();dz.classList.remove('over');const f=e.dataTransfer.files[0];if(f&&f.type.startsWith('image/'))readImgFile(f);};
+}
+function onImgFile(input){if(input.files[0])readImgFile(input.files[0]);}
+function readImgFile(file){const reader=new FileReader();reader.onload=e=>{pendingImgData=e.target.result;const p=document.getElementById('imgPreviewThumb');p.src=pendingImgData;p.style.display='block';document.getElementById('imgInsertBtn').disabled=false;};reader.readAsDataURL(file);}
+function doInsertImgFromDialog(){
+  const maxW=parseInt(document.getElementById('imgMaxWidth').value)||0;
+  closeDlg('dlgImg');if(!pendingImgData)return;
+  if(maxW>0){const img=new Image();img.onload=()=>{const w=Math.min(img.naturalWidth,maxW),scale=w/img.naturalWidth,h=img.naturalHeight*scale;const c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(img,0,0,w,h);finalInsertImg(c.toDataURL('image/jpeg',0.85));};img.src=pendingImgData;}
+  else finalInsertImg(pendingImgData);
+}
+function finalInsertImg(src){
+  document.getElementById('editDiv').focus();
+  restoreSel(savedSel);
+  document.execCommand('insertHTML',false,`<img src="${src}" style="max-width:100%;border-radius:4px;margin:2px 0;" />`);
+  onContentInput();
+}
+function handlePaste(e){
+  const items=e.clipboardData&&e.clipboardData.items;if(!items)return;
+  for(let i=0;i<items.length;i++){
+    if(items[i].type.startsWith('image/')){
+      e.preventDefault();
+      const file=items[i].getAsFile();const reader=new FileReader();
+      reader.onload=ev=>{const img=new Image();img.onload=()=>{const maxW=1200,w=Math.min(img.naturalWidth,maxW),scale=w/img.naturalWidth,h=img.naturalHeight*scale;const c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(img,0,0,w,h);finalInsertImg(c.toDataURL('image/jpeg',0.85));};img.src=ev.target.result;};
+      reader.readAsDataURL(file);break;
+    }
+  }
+}
+
+// ══════════════════════════════════════
+// TOOLTIP MANAGEMENT
+// ══════════════════════════════════════
+let pendingWord='';
+function openAddBar(){
+  if(mode==='preview')setMode('edit');
+  const sel=window.getSelection(),word=sel?sel.toString().trim():'';
+  if(!word){alert('请先在编辑区选中一个词或短语。');return;}
+  pendingWord=word;
+  document.getElementById('selWordLabel').textContent='"'+word+'"';
+  const n=currentNote();document.getElementById('addBarInput').value=n&&n.tooltips[word]?n.tooltips[word]:'';
+  document.getElementById('addBar').style.display='flex';document.getElementById('addBarInput').focus();
+}
+function closeAddBar(){document.getElementById('addBar').style.display='none';pendingWord='';}
+async function confirmAdd(){
+  const inp=document.getElementById('addBarInput');let def=inp.value.trim();
+  const n=currentNote();if(!n)return;
+  if(!def){inp.disabled=true;inp.value='正在让 Claude 生成解释…';def=await fetchDef(pendingWord,stripHtml(n.html));inp.disabled=false;inp.value=def;}
+  n.tooltips[pendingWord]=def;n.updated=Date.now();saveDb();closeAddBar();renderTipRows();updateStatus();renderTree();setMode('preview');
+}
+function renderTipRows(){
+  const n=currentNote();if(!n)return;const el=document.getElementById('tipRows');el.innerHTML='';
+  const words=Object.keys(n.tooltips);
+  if(!words.length){el.innerHTML='<div style="padding:6px 14px;font-size:13px;color:#bbb;">（暂无解释词汇）</div>';return;}
+  words.forEach(w=>{const r=document.createElement('div');r.className='tip-row';r.innerHTML=`<span class="tip-word">${esc(w)}</span><span class="tip-def">${esc(n.tooltips[w])}</span><button class="tip-del">×</button>`;r.querySelector('.tip-del').onclick=()=>{delete n.tooltips[w];saveDb();renderTipRows();updateStatus();renderTree();if(mode==='preview')renderPreview();};el.appendChild(r);});
+}
+function toggleTipPanel(){const p=document.getElementById('tipPanel'),b=document.getElementById('btnTips');if(p.style.display==='block'){p.style.display='none';b.classList.remove('on');}else{renderTipRows();p.style.display='block';b.classList.add('on');}}
+
+// ══════════════════════════════════════
+// ══════════════════════════════════════
+// EXPORT
+// ══════════════════════════════════════
+function openExportDlg(){
+  const n=currentNote();
+  const f=n&&db.folders.find(x=>x.id===n.folderId);
+  // counts
+  document.getElementById('expCountAll').textContent=db.notes.length;
+  // folder scope
+  const folderNotes=f?getNotesInFolder(f.id):[];
+  document.getElementById('expFolderName').textContent=f?f.name:'（无目录）';
+  document.getElementById('expCountFolder').textContent=folderNotes.length;
+  // note scope
+  document.getElementById('expNoteName').textContent=n?n.title||'无标题':'—';
+  // default filename
+  const d=new Date();
+  const stamp=`${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+  document.getElementById('exportFilename').value=`notes_${stamp}`;
+  // disable folder option if no folder
+  document.querySelector('input[name=exportScope][value=folder]').disabled=!f||folderNotes.length===0;
+  updateExportPreview();
+  document.getElementById('dlgExport').style.display='flex';
+}
+
+function getNotesInFolder(fid){
+  const direct=db.notes.filter(n=>n.folderId===fid);
+  const subFolders=db.folders.filter(f=>f.parentId===fid);
+  return [...direct,...subFolders.flatMap(f=>getNotesInFolder(f.id))];
+}
+
+function getFoldersForNotes(notes){
+  // collect only folders needed for the exported notes
+  const folderIds=new Set(notes.map(n=>n.folderId).filter(Boolean));
+  // also include ancestor folders
+  const result=[];
+  function addWithAncestors(fid){
+    if(!fid||result.find(f=>f.id===fid))return;
+    const f=db.folders.find(x=>x.id===fid);
+    if(!f)return;
+    addWithAncestors(f.parentId);
+    result.push(f);
+  }
+  folderIds.forEach(fid=>addWithAncestors(fid));
+  return result;
+}
+
+function updateExportPreview(){
+  const scope=document.querySelector('input[name=exportScope]:checked').value;
+  const n=currentNote();
+  const f=n&&db.folders.find(x=>x.id===n.folderId);
+  let notes=[];
+  if(scope==='all') notes=db.notes;
+  else if(scope==='folder'&&f) notes=getNotesInFolder(f.id);
+  else if(scope==='note'&&n) notes=[n];
+  const folders=getFoldersForNotes(notes);
+  const hasImg=notes.some(n=>(n.html||'').includes('<img'));
+  let sizeEst=Math.round(JSON.stringify({notes,folders}).length/1024);
+  document.getElementById('exportPreview').innerHTML=
+    `将导出 <b>${notes.length}</b> 篇笔记，<b>${folders.length}</b> 个目录。
+     预计大小约 <b>${sizeEst} KB</b>。
+     ${hasImg?'<span style="color:#c55a11">⚠️ 含图片，文件较大。</span>':''}`;
+}
+
+function doExport(){
+  const scope=document.querySelector('input[name=exportScope]:checked').value;
+  const n=currentNote();
+  const f=n&&db.folders.find(x=>x.id===n.folderId);
+  let notes=[];
+  if(scope==='all') notes=db.notes;
+  else if(scope==='folder'&&f) notes=getNotesInFolder(f.id);
+  else if(scope==='note'&&n) notes=[n];
+  const folders=getFoldersForNotes(notes);
+  const payload={
+    version:1,
+    exportedAt:new Date().toISOString(),
+    scope,
+    folders,
+    notes
+  };
+  const filename=(document.getElementById('exportFilename').value.trim()||'notes_export')+'.json';
+  const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;a.download=filename;a.click();
+  URL.revokeObjectURL(url);
+  closeDlg('dlgExport');
+}
+
+// ══════════════════════════════════════
+// IMPORT
+// ══════════════════════════════════════
+let pendingImportData=null;
+
+function openImportDlg(){
+  pendingImportData=null;
+  document.getElementById('importPreview').style.display='none';
+  document.getElementById('importConfirmBtn').disabled=true;
+  document.getElementById('importFilePicker').value='';
+  document.getElementById('dlgImport').style.display='flex';
+  // drop zone
+  const dz=document.getElementById('importDropZone');
+  dz.ondragover=e=>{e.preventDefault();dz.classList.add('over');};
+  dz.ondragleave=()=>dz.classList.remove('over');
+  dz.ondrop=e=>{e.preventDefault();dz.classList.remove('over');const f=e.dataTransfer.files[0];if(f)readImportFile(f);};
+}
+
+function onImportFile(input){if(input.files[0])readImportFile(input.files[0]);}
+
+function readImportFile(file){
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const data=JSON.parse(e.target.result);
+      if(!data.notes||!Array.isArray(data.notes))throw new Error('格式错误');
+      pendingImportData=data;
+      const folders=data.folders||[];
+      const hasImg=data.notes.some(n=>(n.html||'').includes('<img'));
+      const sizeKB=Math.round(e.target.result.length/1024);
+      document.getElementById('importPreviewText').innerHTML=
+        `文件：<b>${file.name}</b>（${sizeKB} KB）<br>
+         包含 <b>${data.notes.length}</b> 篇笔记，<b>${folders.length}</b> 个目录。
+         ${data.exportedAt?'<br>导出时间：'+new Date(data.exportedAt).toLocaleString('zh-CN'):''}
+         ${hasImg?'<br><span style="color:#c55a11">⚠️ 含图片数据。</span>':''}`;
+      document.getElementById('importPreview').style.display='block';
+      document.getElementById('importConfirmBtn').disabled=false;
+    }catch(err){
+      alert('文件格式错误，请选择由本应用导出的 .json 文件。\n'+err.message);
+    }
+  };
+  reader.readAsText(file);
+}
+
+function doImport(){
+  if(!pendingImportData)return;
+  const mode=document.querySelector('input[name=importMode]:checked').value;
+  const {notes:importNotes,folders:importFolders=[]}=pendingImportData;
+
+  if(mode==='replace'){
+    if(!confirm(`替换全部会清除当前所有 ${db.notes.length} 篇笔记和 ${db.folders.length} 个目录，确认继续？`))return;
+    db.notes=importNotes;
+    db.folders=importFolders;
+  } else if(mode==='merge'){
+    // skip notes/folders with duplicate IDs
+    const existingNoteIds=new Set(db.notes.map(n=>n.id));
+    const existingFolderIds=new Set(db.folders.map(f=>f.id));
+    const newNotes=importNotes.filter(n=>!existingNoteIds.has(n.id));
+    const newFolders=importFolders.filter(f=>!existingFolderIds.has(f.id));
+    db.notes=[...db.notes,...newNotes];
+    db.folders=[...db.folders,...newFolders];
+    const skipped=importNotes.length-newNotes.length;
+    if(skipped>0)alert(`已跳过 ${skipped} 篇重复 ID 的笔记。`);
+  } else if(mode==='update'){
+    // merge folders
+    const existingFolderIds=new Set(db.folders.map(f=>f.id));
+    importFolders.forEach(f=>{if(!existingFolderIds.has(f.id))db.folders.push(f);});
+    // upsert notes
+    const noteMap=new Map(db.notes.map(n=>[n.id,n]));
+    importNotes.forEach(n=>noteMap.set(n.id,n));
+    db.notes=[...noteMap.values()];
+  }
+
+  // set currentId to first note if needed
+  if(!db.notes.find(n=>n.id===db.currentId)&&db.notes.length){
+    db.currentId=db.notes[0].id;
+  }
+  saveDb();
+  closeDlg('dlgImport');
+  renderTree();
+  if(db.notes.length){
+    const n=currentNote()||db.notes[0];
+    db.currentId=n.id;
+    selectNote(db.currentId);
+  }
+  const total=pendingImportData.notes.length;
+  alert(`✅ 导入完成！共导入 ${total} 篇笔记。`);
+  pendingImportData=null;
+}
+
+// CLAUDE API
+// ══════════════════════════════════════
+async function fetchDef(word,ctx){
+  try{const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1000,system:'你是简洁词汇解释助手。根据上下文用1-2句中文解释词语，直接给出无任何前缀。',messages:[{role:'user',content:`笔记：\n${ctx}\n\n请解释：${word}`}]})});const d=await r.json();return d.content?.[0]?.text?.trim()||'（获取失败，请手动输入）';}catch(e){return'（网络错误，请手动输入）';}
+}
+
+// ══════════════════════════════════════
+// STATUS + UTILS
+// ══════════════════════════════════════
+function updateStatus(){const n=currentNote();if(!n)return;const f=db.folders.find(x=>x.id===n.folderId);const date=new Date(n.updated).toLocaleString('zh-CN',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});document.getElementById('statusBar').innerHTML=`<span>${stripHtml(n.html).length} 字</span><span>${Object.keys(n.tooltips).length} 个解释</span><span>修改 ${date}</span>`;document.getElementById('noteMeta').textContent=f?'📁 '+f.name:'';}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function stripHtml(h){const d=document.createElement('div');d.innerHTML=h||'';return d.textContent||'';}
+
+// ══════════════════════════════════════
+// INIT
+// ══════════════════════════════════════
+renderTree();
+const initN=currentNote()||db.notes[0];
+if(initN){db.currentId=initN.id;document.getElementById('noteTitle').value=initN.title;document.getElementById('editDiv').innerHTML=initN.html||'';setMode('edit');renderTree();updateStatus();}
+else newNote(null);
+</script>
+</body>
+</html>
